@@ -1,4 +1,4 @@
-name: Linters
+name: CI Pipeline
 
 on:
   pull_request:
@@ -38,7 +38,7 @@ jobs:
           semgrep ci --config ./frappe-semgrep-rules/rules --config r/python.lang.correctness
 
 
-  # 🔹 DEPENDENCY CHECK
+  # 🔹 DEPENDENCY VULNERABILITY CHECK
   deps-vulnerable-check:
     name: 'Vulnerable Dependency Check'
     runs-on: ubuntu-latest
@@ -64,10 +64,10 @@ jobs:
           pip-audit --desc on .
 
 
+  # 🔹 UNIT TESTING (ERPNext)
   test:
     name: 'Unit Tests (ERPNext)'
     runs-on: ubuntu-latest
-    needs: [linter, deps-vulnerable-check]
 
     services:
       mariadb:
@@ -89,21 +89,12 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y redis-server
-
-      - name: Install Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-
       - name: Install Bench
         run: pip install frappe-bench
 
       - name: Init Bench
-        run: bench init frappe-bench --frappe-branch version-15
+        run: |
+          bench init frappe-bench --frappe-branch version-15
 
       - name: Setup Site & Install App
         run: |
@@ -116,3 +107,9 @@ jobs:
         run: |
           cd frappe-bench
           bench --site teststackerp run-tests --app testerp2
+
+ 
+      - name: Run Coverage Check
+        run: |
+          cd frappe-bench/apps/testerp2
+          python -m coverage report --fail-under=70
